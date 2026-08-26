@@ -1,48 +1,39 @@
 import { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosConfig';
+import Alert from '../components/Alert';
 
 const Login = () => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); setError('');
+    if (!form.email || !form.password) return setError('Email and password are required.');
     try {
-      const response = await axiosInstance.post('/api/auth/login', formData);
-      login(response.data);
-      navigate('/tasks');
-    } catch (error) {
-      alert('Login failed. Please try again.');
-    }
+      setLoading(true);
+      const { data } = await axiosInstance.post('/api/auth/login', form);
+      login(data);
+      navigate(data.role === 'agent' ? '/agent/dashboard' : '/employee/dashboard', { replace: true });
+    } catch (err) { setError(err.response?.data?.message || 'Invalid email or password'); }
+    finally { setLoading(false); }
   };
 
-  return (
-    <div className="max-w-md mx-auto mt-20">
-      <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded">
-        <h1 className="text-2xl font-bold mb-4 text-center">Login</h1>
-        <input
-          type="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">
-          Login
-        </button>
-      </form>
-    </div>
-  );
+  return <main className="auth-page">
+    <div className="auth-switch"><span className="selected">Sign In</span><Link to="/register">Register</Link></div>
+    <h1>Welcome Back</h1><p className="subtitle">Sign in to continue to IT Support</p>
+    <Alert type="success">{location.state?.success}</Alert><Alert>{error}</Alert>
+    <form className="form-card flat" onSubmit={handleSubmit}>
+      <label>Email<input type="email" value={form.email} onChange={(e)=>setForm({...form,email:e.target.value})} placeholder="employee@example.com" /></label>
+      <label>Password<input type="password" value={form.password} onChange={(e)=>setForm({...form,password:e.target.value})} placeholder="Password" /></label>
+      <button className="btn btn-primary" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</button>
+    </form>
+    <p className="auth-footer">Don't have an account? <Link to="/register">Register →</Link></p>
+  </main>;
 };
-
 export default Login;
