@@ -1,98 +1,42 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosConfig';
+import { useAuth } from '../context/AuthContext';
+import Alert from '../components/Alert';
+import BottomNav from '../components/BottomNav';
+import Loading from '../components/Loading';
 
 const Profile = () => {
-  const { user } = useAuth(); // Access user token from context
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    university: '',
-    address: '',
-  });
-  const [loading, setLoading] = useState(false);
+  const { user, updateUser, logout } = useAuth();
+  const [form, setForm] = useState({ name: '', email: '' });
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch profile data from the backend
-    const fetchProfile = async () => {
-      setLoading(true);
-      try {
-        const response = await axiosInstance.get('/api/auth/profile', {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-        setFormData({
-          name: response.data.name,
-          email: response.data.email,
-          university: response.data.university || '',
-          address: response.data.address || '',
-        });
-      } catch (error) {
-        alert('Failed to fetch profile. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    axiosInstance.get('/api/auth/profile').then(({data})=>setForm({name:data.name,email:data.email})).catch(()=>setError('Could not load profile.')).finally(()=>setLoading(false));
+  }, []);
 
-    if (user) fetchProfile();
-  }, [user]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await axiosInstance.put('/api/auth/profile', formData, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      alert('Profile updated successfully!');
-    } catch (error) {
-      alert('Failed to update profile. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  const save = async (e) => {
+    e.preventDefault(); setError(''); setMessage('');
+    try { const {data}=await axiosInstance.put('/api/auth/profile',form); updateUser(data); setMessage('Profile updated successfully.'); }
+    catch(err){ setError(err.response?.data?.message || 'Profile update failed.'); }
   };
+  const signOut=()=>{ logout(); navigate('/login'); };
+  if(loading) return <Loading text="Loading profile..."/>;
 
-  if (loading) {
-    return <div className="text-center mt-20">Loading...</div>;
-  }
-
-  return (
-    <div className="max-w-md mx-auto mt-20">
-      <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded">
-        <h1 className="text-2xl font-bold mb-4 text-center">Your Profile</h1>
-        <input
-          type="text"
-          placeholder="Name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <input
-          type="text"
-          placeholder="University"
-          value={formData.university}
-          onChange={(e) => setFormData({ ...formData, university: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <input
-          type="text"
-          placeholder="Address"
-          value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">
-          {loading ? 'Updating...' : 'Update Profile'}
-        </button>
+  return <main className="app-page with-nav">
+    <section className="profile-hero"><div className="profile-avatar">{user.name?.[0]?.toUpperCase()}</div><h1>{user.name}</h1><span className="role-chip">{user.role === 'agent' ? 'IT Support Agent' : 'Employee'}</span></section>
+    <section className="page-content"><Alert type="success">{message}</Alert><Alert>{error}</Alert>
+      <form className="form-card" onSubmit={save}>
+        <label>Full Name<input value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})}/></label>
+        <label>Email<input type="email" value={form.email} onChange={(e)=>setForm({...form,email:e.target.value})}/></label>
+        <label>Role<input value={user.role === 'agent' ? 'IT Support Agent' : 'Employee'} disabled/></label>
+        <button className="btn btn-primary">Save Changes</button>
+        <button type="button" className="btn btn-danger-outline" onClick={signOut}>Log Out</button>
       </form>
-    </div>
-  );
+    </section><BottomNav/>
+  </main>;
 };
-
 export default Profile;
