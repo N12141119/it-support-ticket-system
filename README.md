@@ -77,15 +77,8 @@ Run:
 npm run build
 NODE_ENV=production npm start
 ```
-The Express backend serves `frontend/build` when `NODE_ENV=production`.
 
-## Security notes
-- Public signup always creates an Employee; it never accepts an Agent role.
-- Passwords are bcrypt hashed.
-- Agent-only API routes are protected by role middleware.
-- Employees may access only their own ticket details.
-- `.env`, `.pem`, and `.ppk` are ignored by Git.
 
-## Suggested Git/Jira workflow
-Do not commit this whole completed reference as one feature if your assessment requires chronology. Implement/copy it incrementally on Jira-linked feature branches, for example:
-`feature/ITS-XX-employee-registration` → PR → merge → next story.
+
+
+
