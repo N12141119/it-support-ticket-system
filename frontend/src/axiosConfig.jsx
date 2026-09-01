@@ -6,13 +6,35 @@ const axiosInstance = axios.create({
 });
 
 axiosInstance.interceptors.request.use((config) => {
-  try {
-    const user = JSON.parse(localStorage.getItem('itsUser'));
-    if (user?.token) config.headers.Authorization = `Bearer ${user.token}`;
-  } catch (_) {
-    // Ignore corrupted local storage. AuthContext will clear it on next logout.
+  const storedUser = localStorage.getItem('itsUser');
+
+  if (storedUser) {
+    const user = JSON.parse(storedUser);
+
+    if (user?.token) {
+      config.headers.Authorization = `Bearer ${user.token}`;
+    }
   }
+
   return config;
 });
 
-export default axiosInstance;
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      error.response?.status === 401 &&
+      localStorage.getItem('itsUser')
+    ) {
+      localStorage.removeItem('itsUser');
+
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default axiosInstance;;
